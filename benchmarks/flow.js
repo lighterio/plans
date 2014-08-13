@@ -1,7 +1,6 @@
 var Promise = require('bluebird');
 var plans = require('../plans');
 var fs = require('fs');
-var assert = require('assert');
 var cwd = process.cwd();
 
 var path = 'assets/ok.json';
@@ -10,7 +9,7 @@ var tests = {
   plans: function (done) {
     plans.flow(path, [fs.readFile, JSON.parse], {
       ok: function (data) {
-        assert.equal(data.success, true);
+        is.true(data.success);
         setImmediate(done);
       },
       error: function (err) {
@@ -23,7 +22,7 @@ var tests = {
   },
   bluebird: function (done) {
     fs.readFileAsync(path).then(JSON.parse).then(function (data) {
-      assert.equal(data.success, true);
+      is.true(data.success);
       setImmediate(done);
     })
     .catch(SyntaxError, function (err) {

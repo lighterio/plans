@@ -1,10 +1,10 @@
 # Plans
 
 [![NPM Version](https://badge.fury.io/js/plans.png)](http://badge.fury.io/js/plans)
-[![Build Status](https://travis-ci.org/zerious/plans.png?branch=master)](https://travis-ci.org/zerious/plans)
-[![Code Coverage](https://coveralls.io/repos/zerious/plans/badge.png?branch=master)](https://coveralls.io/r/zerious/plans)
-[![Dependencies](https://david-dm.org/zerious/plans.png?theme=shields.io)](https://david-dm.org/zerious/plans)
-[![Support](http://img.shields.io/gittip/zerious.png)](https://www.gittip.com/zerious/)
+[![Build Status](https://travis-ci.org/lighterio/plans.png?branch=master)](https://travis-ci.org/lighterio/plans)
+[![Code Coverage](https://coveralls.io/repos/lighterio/plans/badge.png?branch=master)](https://coveralls.io/r/lighterio/plans)
+[![Dependencies](https://david-dm.org/lighterio/plans.png?theme=shields.io)](https://david-dm.org/lighterio/plans)
+[![Support](http://img.shields.io/gittip/zerious.png)](https://www.gittip.com/lighterio/)
 
 Plans is a high-performance JavaScript library for async operations and error
 handling. It uses a promise-inspired structure called a "plan". A plan is a

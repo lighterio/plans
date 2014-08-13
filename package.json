@@ -6,10 +6,10 @@
   ],
   "version": "0.0.0",
   "main": "plans.js",
-  "homepage": "http://github.com/zerious/plans",
-  "repository": "http://github.com/zerious/plans.git",
+  "homepage": "http://github.com/lighterio/plans",
+  "repository": "http://github.com/lighterio/plans.git",
   "bugs": {
-    "url": "http://github.com/zerious/plans/issues"
+    "url": "http://github.com/lighterio/plans/issues"
   },
   "author": {
     "name": "Sam Eubank",
@@ -24,31 +24,29 @@
   "licenses": [
     {
       "type": "MIT",
-      "url": "http://github.com/zerious/plans/blob/master/MIT-LICENSE.md"
+      "url": "http://github.com/lighterio/plans/blob/master/MIT-LICENSE.md"
     }
   ],
   "engines": [
     "node >= 0.2.6"
   ],
   "scripts": {
-    "test": "../exam/exam.js",
-    "retest": "../exam/exam.js --watch",
-    "cover": "istanbul cover ../exam/exam.js",
+    "test": "./node_modules/exam/exam.js",
+    "retest": "./node_modules/exam/exam.js --watch",
+    "cover": "istanbul cover ./node_modules/exam/exam.js",
     "report": "open coverage/lcov-report/index.html",
-    "coveralls": "istanbul cover ../exam/exam.js --report lcovonly -- -R spec && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage"
+    "coveralls": "istanbul cover ./node_modules/exam/exam.js --report lcovonly -- -R spec && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage"
   },
   "dependencies": {},
   "devDependencies": {
-    "exam": "0.0.4",
+    "exam": "0.0.5",
     "async": "0.9.0",
     "bluebird": "2.2.2",
     "cedar": "0.0.15",
     "coveralls": "2.11.1",
     "istanbul": "0.3.0",
-    "mocha": "1.21.3",
     "q": "1.0.1",
     "step": "0.0.5",
-    "zeriousify": "0.1.7",
-    "assert-plus": "0.1.5"
+    "zeriousify": "0.1.9"
   }
 }

@@ -78,7 +78,7 @@ describe('flow', function () {
     plans.flow(0, [throwMe, throwMe], {
       error: function (error) {
         is.error(error);
-      }
+      },
       errors: function (errors) {
         is.lengthOf(errors, 2);
         done();
