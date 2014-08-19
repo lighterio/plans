@@ -2,11 +2,11 @@ var plans = require('../plans');
 var fs = require('fs');
 var cwd = process.cwd();
 
-function throwMe(message) {
+function throwError(message) {
   throw new Error(message);
 }
 
-describe('flow', function () {
+describe('plans.flow', function () {
 
   it('reads and parses JSON', function (done) {
     var isOk = false;
@@ -75,7 +75,7 @@ describe('flow', function () {
   });
 
   it('pushes errors', function (done) {
-    plans.flow(0, [throwMe, throwMe], {
+    plans.flow(0, [throwError, throwError], {
       error: function (error) {
         is.error(error);
       },

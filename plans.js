@@ -4,10 +4,12 @@ var plans = module.exports = function () {
   // TODO: Argument-overloaded shorthand?
 };
 
-/**
- * Expose the version to module users.
- */
-plans.version = require('./package.json').version;
+// Expose the version number, but only load package JSON if a get is performed.
+Object.defineProperty(plans, 'version', {
+  get: function () {
+    return require('./package.json').version;
+  }
+});
 
 /**
  * Allow a custom logger.
@@ -21,7 +23,7 @@ plans.setLogger = function (object) {
 // By default, log an error if there is one.
 var basePlan = {
   error: function (e) {
-    logger.error(e ? e.stack || e : e);
+    logger.error(e && e.stack ? e.stack : e);
   }
 };
 
@@ -124,79 +126,12 @@ plans.run = function(fn, plan) {
 /**
  * Execute functions in parallel, then execute the plan.
  */
-plans.parallel = function(fns, plan) {
-  /*
-  var wait = 1;
-  var errs = [];
-  fns.forEach(function (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      (errs = errs || []).push(e);
-    }
-    if (!--wait) {
-      finishPlan(plan, errs);
-    }
-  });
-  if (!--wait) {
-    finishPlan(plan, errs);
-  }
-  */
-};
+//plans.parallel = function(fns, plan) {};
 
 /**
  * Execute functions in series, then execute the plan.
  */
-plans.series = function(fns, plan) {
-  /*
-  var fnIndex = 0;
-  var fnCount = fns.length;
-  var errs;
-  var next = function () {
-    var fn = fns[fnIndex];
-    var argCount = getArgCount(fn);
-    var callback = (++fnIndex < fnCount ? next : finish);
-    var ignore = plans.ignore;
-    try {
-      if (argCount == 2) {
-        data = fn(data, function (err, result) {
-          if (err) {
-            handleError(plan, err);
-          }
-          else {
-            data = result;
-            onData();
-            onData = ignore;
-          }
-        });
-        if (typeof data != 'undefined') {
-          onData();
-          onData = ignore;
-        }
-      }
-      else {
-        data = fn(data);
-        onData();
-        onData = ignore;
-      }
-    }
-    catch (e) {
-      (errs = errs || []).push(e);
-      onData(data);
-    }
-  };
-  var finish = function () {
-    finishPlan(plan, errs, data);
-  };
-  if (fnCount) {
-    next();
-  }
-  else {
-    finish();
-  }
-  */
-};
+//plans.series = function(fns, plan) {};
 
 /**
  * Flow data through an array of functions.
@@ -261,15 +196,8 @@ function seeAsHavingTwoArgs(fn) {
 }
 
 function getArgs(fn) {
-  var args = fn._PLANS_ARGS;
-  if (!args) {
-    var match = fn.toString().match(/function.*?\((.*?)\)/);
-    args = match[1].split(',');
-    Object.defineProperty(fn, '_PLANS_ARGS', {
-      enumerable: false,
-      value: args
-    });
-  }
+  var match = fn.toString().match(/function.*?\((.*?)\)/);
+  var args = match[1] ? match[1].split(',') : [];
   return args;
 }
 

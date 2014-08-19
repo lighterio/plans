@@ -88,15 +88,6 @@ describe('plans.run', function () {
     });
   });
 
-  it('handles errback errors', function (done) {
-    plans.run(callError, {
-      error: function (e) {
-        is.error(e);
-        done();
-      }
-    });
-  });
-
   it('supports errback lookalikes', function (done) {
     plans.run(lookalike3, {
       ok: function (data) {
