@@ -1,9 +1,15 @@
 require('zeriousify').test();
 
+var plans = require('../plans');
+
 describe('plans', function () {
-  it('is a function', function () {
-    var plans = require('../plans');
-    is.function(plans);
-    plans();
+
+  it('is an object', function () {
+    is.object(plans);
   });
+
+  it('has a version', function () {
+    is.string(plans.version);
+  });
+
 });

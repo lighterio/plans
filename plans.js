@@ -1,8 +1,6 @@
 var fs = require('fs');
 
-var plans = module.exports = function () {
-  // TODO: Argument-overloaded shorthand?
-};
+var plans = module.exports = {};
 
 // Expose the version number, but only load package JSON if a get is performed.
 Object.defineProperty(plans, 'version', {
@@ -11,14 +9,15 @@ Object.defineProperty(plans, 'version', {
   }
 });
 
+// By default, log to console.
+var logger = console;
+
 /**
  * Allow a custom logger.
  */
-var logger = console;
 plans.setLogger = function (object) {
   logger = object;
 };
-
 
 // By default, log an error if there is one.
 var basePlan = {
@@ -124,14 +123,111 @@ plans.run = function(fn, plan) {
 };
 
 /**
- * Execute functions in parallel, then execute the plan.
- */
-//plans.parallel = function(fns, plan) {};
-
-/**
  * Execute functions in series, then execute the plan.
  */
-//plans.series = function(fns, plan) {};
+plans.series = function(fns, plan) {
+  var fnIndex = 0;
+  var fnCount = fns.length;
+  var errs;
+  var next = function () {
+    var fn = fns[fnIndex];
+    var argCount = getArgCount(fn);
+    var onDone = (++fnIndex < fnCount ? next : finish);
+    var ignore = plans.ignore;
+    var value;
+    try {
+      if (argCount > 0) {
+        value = fn(function (e) {
+          if (e instanceof Error) {
+            (errs = errs || []).push(e);
+            onDone();
+            onDone = ignore;
+          }
+          else {
+            onDone();
+            onDone = ignore;
+          }
+        });
+        if (typeof value != 'undefined') {
+          onDone();
+          onDone = ignore;
+        }
+      }
+      else {
+        fn();
+        onDone();
+        onDone = ignore;
+      }
+    }
+    catch (e) {
+      (errs = errs || []).push(e);
+      onDone();
+      onDone = ignore;
+    }
+  };
+  var finish = function () {
+    finishPlan(plan, errs);
+  };
+  if (fnCount) {
+    next();
+  }
+  else {
+    finish();
+  }
+};
+
+/**
+ * Execute functions in parallel, then execute the plan.
+ */
+plans.parallel = function(fns, plan) {
+  var waitCount = fns.length;
+  var errs;
+  if (waitCount) {
+    var finish = function() {
+      if (!--waitCount) {
+        finishPlan(plan, errs);
+      }
+    };
+    fns.forEach(function (fn) {
+      var argCount = getArgCount(fn);
+      var onDone = finish;
+      var ignore = plans.ignore;
+      var value;
+      try {
+        if (argCount > 0) {
+          value = fn(function (e, value) {
+            if (e instanceof Error) {
+              (errs = errs || []).push(e);
+              onDone();
+              onDone = ignore;
+            }
+            else {
+              onDone();
+              onDone = ignore;
+            }
+          });
+          if (typeof value != 'undefined') {
+            onDone();
+            onDone = ignore;
+          }
+        }
+        else {
+          fn();
+          onDone();
+          onDone = ignore;
+        }
+      }
+      catch (e) {
+        (errs = errs || []).push(e);
+        onDone();
+        onDone = ignore;
+      }
+    });
+  }
+  else {
+    finishPlan(plan);
+  }
+};
 
 /**
  * Flow data through an array of functions.
@@ -146,11 +242,12 @@ plans.flow = function (data, fns, plan) {
     var onData = (++fnIndex < fnCount ? next : finish);
     var ignore = plans.ignore;
     try {
-      if (argCount == 2) {
+      if (argCount > 1) {
         data = fn(data, function (e, result) {
           if (e) {
             (errs = errs || []).push(e);
             onData();
+            onDone = ignore;
           }
           else {
             data = result;
@@ -172,6 +269,7 @@ plans.flow = function (data, fns, plan) {
     catch (e) {
       (errs = errs || []).push(e);
       onData();
+      onDone = ignore;
     }
   };
   var finish = function () {
@@ -186,12 +284,12 @@ plans.flow = function (data, fns, plan) {
 };
 
 /**
- * Trick plans.flow into thinking a function takes (data, cb(err, data)) args.
+ * Trick plans into thinking a function takes a specified number of arguments.
  */
-function seeAsHavingTwoArgs(fn) {
+function defineArgCount(fn, count) {
   Object.defineProperty(fn, '_PLANS_ARG_COUNT', {
     enumerable: false,
-    value: 2
+    value: count
   });
 }
 
@@ -214,4 +312,5 @@ function getArgCount(fn) {
   return count;
 }
 
-seeAsHavingTwoArgs(fs.readFile);
+// Trick plans.flow into thinking fs.readFile takes (path, callback) arguments.
+defineArgCount(fs.readFile, 2);

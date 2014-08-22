@@ -4,7 +4,7 @@
   "keywords": [
     "plans"
   ],
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "plans.js",
   "homepage": "http://github.com/lighterio/plans",
   "repository": "http://github.com/lighterio/plans.git",
@@ -46,7 +46,6 @@
     "coveralls": "2.11.1",
     "istanbul": "0.3.0",
     "q": "1.0.1",
-    "step": "0.0.5",
     "zeriousify": "0.1.9"
   }
 }

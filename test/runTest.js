@@ -10,19 +10,19 @@ function throwError(message) {
   throw newError(message);
 }
 
-function return1() {
+function returner() {
   return 1;
 }
 
-function call2(errback) {
+function callbacker(errback) {
   errback(null, 2);
 }
 
-function lookalike3(errback) {
+function errbackLookalike(errback) {
   return 3;
 }
 
-function callError(errback) {
+function errbacker(errback) {
   errback(newError(), null);
 }
 
@@ -34,7 +34,7 @@ describe('plans.run', function () {
 
   it('runs a function', function (done) {
     var isOk = false;
-    plans.run(return1, {
+    plans.run(returner, {
       ok: function (data) {
         is.tis(data, 1);
       },
@@ -47,7 +47,7 @@ describe('plans.run', function () {
       }
     });
     // Un-define arg count so we'll hit that code path later.
-    return1._PLANS_ARG_COUNT = return1.undefined;
+    returner._PLANS_ARG_COUNT = returner.undefined;
   });
 
   it('handles errors', function (done) {
@@ -71,7 +71,7 @@ describe('plans.run', function () {
   });
 
   it('calls done when there is no ok method', function (done) {
-    plans.run(return1, {
+    plans.run(returner, {
       done: function (data) {
         is.tis(data, 1);
         done();
@@ -80,7 +80,7 @@ describe('plans.run', function () {
   });
 
   it('supports errbacks', function (done) {
-    plans.run(call2, {
+    plans.run(callbacker, {
       ok: function (data) {
         is.tis(data, 2);
         done();
@@ -89,7 +89,7 @@ describe('plans.run', function () {
   });
 
   it('handles errback errors', function (done) {
-    plans.run(callError, {
+    plans.run(errbacker, {
       error: function (e) {
         is.error(e);
         done();
@@ -98,7 +98,7 @@ describe('plans.run', function () {
   });
 
   it('supports errback lookalikes', function (done) {
-    plans.run(lookalike3, {
+    plans.run(errbackLookalike, {
       ok: function (data) {
         is.tis(data, 3);
         done();

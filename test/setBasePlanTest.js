@@ -6,7 +6,7 @@ var throwError = function () {
 
 describe('plans.setBasePlan', function () {
 
-  // Trigger an error so the base plan's will log.
+  // Trigger an error so the base plan will log.
   it('is called internally', function (done) {
     var errorCount = 0;
     plans.setLogger({
@@ -14,7 +14,7 @@ describe('plans.setBasePlan', function () {
         errorCount = 1;
       }
     });
-    plans.flow(0, [throwError]);
+    plans.run(throwError);
     setImmediate(function () {
       is(errorCount, 1);
       done();

@@ -20,5 +20,18 @@ fs.readFile = function (path, errBack) {
   }
 };
 
+// Eat dogfood.
+var plans = require('../plans');
 
-require('./flow.js');
+// Get tests.
+var flow = require('./flow');
+var parallel = require('./parallel');
+var finish = function () {
+  console.log('');
+};
+
+plans.series([flow, parallel, finish], {
+  error: function (e) {
+    console.error(e);
+  }
+});
