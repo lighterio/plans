@@ -1,9 +1,10 @@
 var plans = require('../plans');
 var fs = require('fs');
+var assert = require('assert');
 var cwd = process.cwd();
 
 function newError(message) {
-  return new Error(message || 'Error was thrown on purpose.');
+  return new assert.AssertionError(message || 'Error was thrown on purpose.');
 }
 
 function throwError(message) {
@@ -34,8 +35,10 @@ function errbacker(errback) {
 
 describe('plans.parallel', function () {
 
-  plans.setLogger({
-    error: function () {}
+  it('defaults to the base plan', function (done) {
+    plans.setLogger({error: plans.ignore});
+    plans.parallel([throwError]);
+    setImmediate(done);
   });
 
   it('runs functions in parallel', function (done) {
@@ -74,6 +77,7 @@ describe('plans.parallel', function () {
       },
       error: function (e) {
         is.fail(e);
+        done();
       }
     });
   });
@@ -86,6 +90,7 @@ describe('plans.parallel', function () {
       },
       error: function (e) {
         is.fail(e);
+        done();
       },
       done: function () {
         is.true(isOk);
@@ -98,6 +103,7 @@ describe('plans.parallel', function () {
     plans.parallel([throwError], {
       ok: function () {
         is.fail();
+        done();
       },
       error: function (e) {
         is.error(e);

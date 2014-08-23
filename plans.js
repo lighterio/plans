@@ -1,5 +1,6 @@
 var fs = require('fs');
 
+// The plans API is an object.
 var plans = module.exports = {};
 
 // Expose the version number, but only load package JSON if a get is performed.
@@ -39,11 +40,45 @@ plans.setBasePlan = function (plan) {
 plans.ignore = function () {};
 
 /**
+ * A Retry is a plan that is being tried again.
+ */
+function Retry(plan) {
+  for (var key in plan) {
+    this[key] = plan[key];
+  }
+}
+
+/**
  * Execute a plan based on the error(s) and value.
  */
-function finishPlan(plan, errors, result) {
+function finishPlan(plan, errors, result, method, args) {
   var fn;
+  if (typeof plan == 'function') {
+    var errback = plan;
+    plan = {
+      ok: function (data) {
+        errback(null, data);
+      },
+      error: function (e) {
+        errback(e);
+      }
+    };
+  }
   if (errors) {
+    if (plan && plan.tries) {
+      if (!(plan instanceof Retry)) {
+        for (var index = args.length - 1; index; index--) {
+          if (args[index] == plan) {
+            plan = args[index] = new Retry(plan);
+            break;
+          }
+        }
+      }
+      if (--plan.tries) {
+        method.apply(plans, args);
+        return;
+      }
+    }
     handleError(plan, errors[0]);
     if (plan) {
       fn = plan.errors;
@@ -97,13 +132,14 @@ function handleError(plan, error) {
  * Execute a function, then a plan.
  */
 plans.run = function(fn, plan) {
+  var args = arguments;
   var result;
   var argCount = getArgCount(fn);
   var finish = finishPlan;
   try {
     if (argCount == 1) {
       result = fn(function (e, result) {
-        finish(plan, e ? [e] : null, result);
+        finish(plan, e ? [e] : null, result, plans.run, args);
         finish = plans.ignore;
       });
       if (typeof result != 'undefined') {
@@ -117,7 +153,7 @@ plans.run = function(fn, plan) {
     }
   }
   catch (e) {
-    finish(plan, [e], result);
+    finish(plan, [e], result, plans.run, args);
     finish = plans.ignore;
   }
 };
@@ -126,6 +162,7 @@ plans.run = function(fn, plan) {
  * Execute functions in series, then execute the plan.
  */
 plans.series = function(fns, plan) {
+  var args = arguments;
   var fnIndex = 0;
   var fnCount = fns.length;
   var errs;
@@ -166,7 +203,7 @@ plans.series = function(fns, plan) {
     }
   };
   var finish = function () {
-    finishPlan(plan, errs);
+    finishPlan(plan, errs, null, plans.series, args);
   };
   if (fnCount) {
     next();
@@ -180,12 +217,13 @@ plans.series = function(fns, plan) {
  * Execute functions in parallel, then execute the plan.
  */
 plans.parallel = function(fns, plan) {
+  var args = arguments;
   var waitCount = fns.length;
   var errs;
   if (waitCount) {
     var finish = function() {
       if (!--waitCount) {
-        finishPlan(plan, errs);
+        finishPlan(plan, errs, null, plans.parallel, args);
       }
     };
     fns.forEach(function (fn) {
@@ -233,6 +271,7 @@ plans.parallel = function(fns, plan) {
  * Flow data through an array of functions.
  */
 plans.flow = function (data, fns, plan) {
+  var args = arguments;
   var fnIndex = 0;
   var fnCount = fns.length;
   var errs;
@@ -273,7 +312,7 @@ plans.flow = function (data, fns, plan) {
     }
   };
   var finish = function () {
-    finishPlan(plan, errs, data);
+    finishPlan(plan, errs, data, plans.flow, args);
   };
   if (fnCount) {
     next();
@@ -293,12 +332,18 @@ function defineArgCount(fn, count) {
   });
 }
 
+/**
+ * Get an array of names of arguments that a function takes.
+ */
 function getArgs(fn) {
   var match = fn.toString().match(/function.*?\((.*?)\)/);
   var args = match[1] ? match[1].split(',') : [];
   return args;
 }
 
+/**
+ * Get the number of arguments that a function takes.
+ */
 function getArgCount(fn) {
   var count = fn._PLANS_ARG_COUNT;
   if (typeof count != 'number') {

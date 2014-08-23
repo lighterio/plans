@@ -1,12 +1,19 @@
 var plans = require('../plans');
 var fs = require('fs');
+var assert = require('assert');
 var cwd = process.cwd();
 
 function throwError(message) {
-  throw new Error(message);
+  throw new assert.AssertionError(message);
 }
 
 describe('plans.flow', function () {
+
+  it('defaults to the base plan', function (done) {
+    plans.setLogger({error: plans.ignore});
+    plans.flow(-1, [Math.sqrt]);
+    setImmediate(done);
+  });
 
   it('reads and parses JSON', function (done) {
     var isOk = false;
@@ -16,6 +23,7 @@ describe('plans.flow', function () {
       },
       error: function (e) {
         is.fail(e);
+        done();
       },
       done: function () {
         is.true(isOk);
@@ -28,6 +36,7 @@ describe('plans.flow', function () {
     plans.flow(cwd + '/test/assets/fail.json', [fs.readFile, JSON.parse], {
       ok: function (data) {
         is.fail();
+        done();
       },
       error: function (e) {
         is.instance(e, SyntaxError);
@@ -40,6 +49,7 @@ describe('plans.flow', function () {
     plans.flow(cwd + '/test/assets/incognito.json', [fs.readFile, JSON.parse], {
       ok: function (data) {
         is.fail();
+        done();
       },
       error: function (e) {
         is(e.code, 'ENOENT');
@@ -57,8 +67,9 @@ describe('plans.flow', function () {
         is(data, 'hi!');
         done();
       },
-      error: function (err) {
-        is.fail();
+      error: function (e) {
+        is.fail(e);
+        done();
       }
     });
   });
@@ -94,6 +105,7 @@ describe('plans.flow', function () {
       },
       error: function (err) {
         is.fail();
+        done();
       }
     });
   });

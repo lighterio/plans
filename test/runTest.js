@@ -1,9 +1,10 @@
 var plans = require('../plans');
 var fs = require('fs');
+var assert = require('assert');
 var cwd = process.cwd();
 
 function newError(message) {
-  return new Error(message || 'Error was thrown on purpose.');
+  return new assert.AssertionError(message || 'Error was thrown on purpose.');
 }
 
 function throwError(message) {
@@ -28,8 +29,10 @@ function errbacker(errback) {
 
 describe('plans.run', function () {
 
-  plans.setLogger({
-    error: function () {}
+  it('defaults to the base plan', function (done) {
+    plans.setLogger({error: plans.ignore});
+    plans.run(throwError);
+    setImmediate(done);
   });
 
   it('runs a function', function (done) {
@@ -40,6 +43,7 @@ describe('plans.run', function () {
       },
       error: function (e) {
         is.fail(e);
+        done();
       },
       done: function (data) {
         is.tis(data, 1);
@@ -50,10 +54,63 @@ describe('plans.run', function () {
     returner._PLANS_ARG_COUNT = returner.undefined;
   });
 
+  it('supports tries', function (done) {
+    var count = 0;
+    function tryIt() {
+      if (++count < 3) {
+        throwError();
+      }
+    }
+    plans.run(tryIt, {
+      tries: 5,
+      ok: function () {
+        is.tis(count, 3);
+        done();
+      },
+      error: function (e) {
+        is.fail();
+        done();
+      }
+    });
+  });
+
+  it('fails if tries are exhausted', function (done) {
+    plans.run(throwError, {
+      tries: 2,
+      error: function (e) {
+        done();
+      }
+    });
+  });
+
+  it('ignores extra arguments when tries is set', function (done) {
+    plans.run(throwError, {
+      tries: 2,
+      error: function (e) {
+        done();
+      }
+    }, true);
+  });
+
+  it('supports errbacks as plans', function (done) {
+    plans.run(returner, function (e, result) {
+      is.tis(result, 1);
+      done();
+    });
+  });
+
+  it('supports errbacks that throw errors as plans', function (done) {
+    plans.run(throwError, function (e, result) {
+      is.error(e);
+      done();
+    });
+  });
+
   it('handles errors', function (done) {
     plans.run(throwError, {
       ok: function (data) {
         is.fail();
+        done();
       },
       error: function (e) {
         is.error(e);
