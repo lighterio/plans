@@ -90,7 +90,7 @@ plans.filter(['a.js', 'b.js', 'c.js'], fs.exists, {
 # Plan Objects
 
 A plan is a simple object which specifies how you would like to handle a result,
-whether it is success or error. A plan can be saved as an object and reused for
+whether it is success or error. A plan object can be saved and reused for
 multiple ```plans``` method calls.
 
 Plan objects specify their behavior by having methods such as ```ok``` and
@@ -107,19 +107,26 @@ var plan = {
 };
 ```
 
-### .ok(data)
+### .ok: function (result) {...}
 
 Called when there is a result and no error.
 
-### .error(error)
+### .error: function (error) {...}
 
 Called when an error occurred. Its argument is the first error that occurred.
 
-### .errors(arrayOfErrors)
+### .errors: function (arrayOfErrors) {...}
 
 Called when one or more errors occurred. If a plan has both ```.error```
 and ```.errors```, they will both be called when an error occurs, and each of
 them will only be called once (per usage).
+
+### .tries: integer
+
+Plans methods will attempt execution up to `tries` times. The default is one,
+and any value greater than one allows for retries. If the method fails on each
+try, it will call the plan's `error` and/or `errors` methods with the error(s)
+from the final attempt.
 
 # API Methods
 
@@ -143,6 +150,15 @@ logger from `plans.setLogger`:
 }
 ```
 
+### .run(fn, plan)
+
+Runs the function, then executes the plan.
+
+### .flow(data, fnArray, plan)
+
+Runs an array of functions on data in serial by returning the result of the
+previous function to the next function.
+
 ### .parallel(fnArray, plan)
 
 Executes an array of functions in parallel, then executes the plan.
@@ -151,6 +167,7 @@ Executes an array of functions in parallel, then executes the plan.
 
 Executes an array of functions in series, then executes the plan.
 
+<!--
 ### .map(array, fn, plan)
 
 Runs each item in the array through a function and returns an array containing
@@ -159,11 +176,7 @@ the results of each of those functions.
 ### .filter(array, fn, plan)
 
 Returns the items from the array for which the function returned a truey value.
-
-### .flow(data, fnArray, plan)
-
-Runs an array of functions on data in serial by returning the result of the
-previous function to the next function.
+-->
 
 ### .ignore()
 
