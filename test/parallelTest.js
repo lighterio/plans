@@ -19,6 +19,12 @@ function callbacker(errback) {
   errback(null, 2);
 }
 
+function asyncCallbacker(errback) {
+  setImmediate(function () {
+    errback(3);
+  });
+}
+
 function errbackLookalike(errback) {
   return 3;
 }
@@ -27,88 +33,75 @@ function errbacker(errback) {
   errback(newError(), null);
 }
 
-describe('plans.run', function () {
+describe('plans.parallel', function () {
 
   it('defaults to the base plan', function (done) {
     plans.setLogger({error: plans.ignore});
-    plans.run(throwError);
+    plans.parallel([throwError]);
     setImmediate(done);
   });
 
-  it('runs a function', function (done) {
+  it('runs functions in parallel', function (done) {
+    var message = '';
+
+    var one = function (done) {
+      setTimeout(function () {
+        message += 1;
+        done();
+      }, 5);
+    };
+
+    var two = function (done) {
+      setImmediate(function () {
+        message += 2;
+        done();
+      });
+    };
+
+    var three = function (done) {
+      setTimeout(function () {
+        message += 3;
+        done();
+      }, 10);
+    };
+
+    var four = function (done) {
+      message += 4;
+      done();
+    };
+
+    plans.parallel([one, two, three, four], {
+      ok: function () {
+        is(message, '4213');
+        done();
+      },
+      error: function (e) {
+        is.fail(e);
+        done();
+      }
+    });
+  });
+
+  it('calls ok and done even if the array is empty', function (done) {
     var isOk = false;
-    plans.run(returner, {
-      ok: function (data) {
-        is(data, 1);
+    plans.parallel([], {
+      ok: function () {
+        isOk = true;
       },
       error: function (e) {
         is.fail(e);
         done();
       },
-      done: function (data) {
-        is(data, 1);
+      done: function () {
+        is.true(isOk);
         done();
       }
-    });
-    // Un-define arg count so we'll hit that code path later.
-    returner._PLANS_ARG_COUNT = returner.undefined;
-  });
-
-  it('supports tries', function (done) {
-    var count = 0;
-    function tryIt() {
-      if (++count < 3) {
-        throwError();
-      }
-    }
-    plans.run(tryIt, {
-      tries: 5,
-      ok: function () {
-        is(count, 3);
-        done();
-      },
-      error: function (e) {
-        is.fail();
-        done();
-      }
-    });
-  });
-
-  it('fails if tries are exhausted', function (done) {
-    plans.run(throwError, {
-      tries: 2,
-      error: function (e) {
-        done();
-      }
-    });
-  });
-
-  it('ignores extra arguments when tries is set', function (done) {
-    plans.run(throwError, {
-      tries: 2,
-      error: function (e) {
-        done();
-      }
-    }, true);
-  });
-
-  it('supports errbacks as plans', function (done) {
-    plans.run(returner, function (e, result) {
-      is(result, 1);
-      done();
-    });
-  });
-
-  it('supports errbacks that throw errors as plans', function (done) {
-    plans.run(throwError, function (e, result) {
-      is.error(e);
-      done();
     });
   });
 
   it('handles errors', function (done) {
-    plans.run(throwError, {
-      ok: function (data) {
+    plans.parallel([throwError], {
+      ok: function () {
         is.fail();
         done();
       },
@@ -120,7 +113,7 @@ describe('plans.run', function () {
   });
 
   it('calls done even when an error occurred', function (done) {
-    plans.run(throwError, {
+    plans.parallel([throwError], {
       done: function () {
         done();
       }
@@ -128,25 +121,31 @@ describe('plans.run', function () {
   });
 
   it('calls done when there is no ok method', function (done) {
-    plans.run(returner, {
-      done: function (data) {
-        is(data, 1);
+    plans.parallel([returner], {
+      done: function () {
         done();
       }
     });
   });
 
   it('supports errbacks', function (done) {
-    plans.run(callbacker, {
+    plans.parallel([callbacker], {
       ok: function (data) {
-        is(data, 2);
+        done();
+      }
+    });
+  });
+
+  it('supports async errbacks', function (done) {
+    plans.parallel([asyncCallbacker], {
+      ok: function () {
         done();
       }
     });
   });
 
   it('handles errback errors', function (done) {
-    plans.run(errbacker, {
+    plans.parallel([errbacker], {
       error: function (e) {
         is.error(e);
         done();
@@ -155,16 +154,15 @@ describe('plans.run', function () {
   });
 
   it('supports errback lookalikes', function (done) {
-    plans.run(errbackLookalike, {
+    plans.parallel([errbackLookalike], {
       ok: function (data) {
-        is(data, 3);
         done();
       }
     });
   });
 
   it('pushes an error', function (done) {
-    plans.run(throwError, {
+    plans.parallel([throwError], {
       errors: function (errors) {
         is.lengthOf(errors, 1);
         is.error(errors[0]);
@@ -175,7 +173,7 @@ describe('plans.run', function () {
 
   it('throws an error if .error === true', function (done) {
     try {
-      plans.run(throwError, {
+      plans.parallel([throwError], {
         error: true
       });
     }

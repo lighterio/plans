@@ -1,12 +1,19 @@
 var plans = require('../plans');
 var fs = require('fs');
+var assert = require('assert');
 var cwd = process.cwd();
 
-function throwMe(message) {
-  throw new Error(message);
+function throwError(message) {
+  throw new assert.AssertionError(message);
 }
 
-describe('flow', function () {
+describe('plans.flow', function () {
+
+  it('defaults to the base plan', function (done) {
+    plans.setLogger({error: plans.ignore});
+    plans.flow(-1, [Math.sqrt]);
+    setImmediate(done);
+  });
 
   it('reads and parses JSON', function (done) {
     var isOk = false;
@@ -16,6 +23,7 @@ describe('flow', function () {
       },
       error: function (e) {
         is.fail(e);
+        done();
       },
       done: function () {
         is.true(isOk);
@@ -28,9 +36,10 @@ describe('flow', function () {
     plans.flow(cwd + '/test/assets/fail.json', [fs.readFile, JSON.parse], {
       ok: function (data) {
         is.fail();
+        done();
       },
       error: function (e) {
-        is.instance(e, SyntaxError);
+        is.instanceOf(e, SyntaxError);
         done();
       }
     });
@@ -40,6 +49,7 @@ describe('flow', function () {
     plans.flow(cwd + '/test/assets/incognito.json', [fs.readFile, JSON.parse], {
       ok: function (data) {
         is.fail();
+        done();
       },
       error: function (e) {
         is(e.code, 'ENOENT');
@@ -57,8 +67,9 @@ describe('flow', function () {
         is(data, 'hi!');
         done();
       },
-      error: function (err) {
-        is.fail();
+      error: function (e) {
+        is.fail(e);
+        done();
       }
     });
   });
@@ -75,7 +86,7 @@ describe('flow', function () {
   });
 
   it('pushes errors', function (done) {
-    plans.flow(0, [throwMe, throwMe], {
+    plans.flow(0, [throwError, throwError], {
       error: function (error) {
         is.error(error);
       },
@@ -94,6 +105,7 @@ describe('flow', function () {
       },
       error: function (err) {
         is.fail();
+        done();
       }
     });
   });
