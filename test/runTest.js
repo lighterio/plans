@@ -39,14 +39,14 @@ describe('plans.run', function () {
     var isOk = false;
     plans.run(returner, {
       ok: function (data) {
-        is.tis(data, 1);
+        is(data, 1);
       },
       error: function (e) {
         is.fail(e);
         done();
       },
       done: function (data) {
-        is.tis(data, 1);
+        is(data, 1);
         done();
       }
     });
@@ -64,7 +64,7 @@ describe('plans.run', function () {
     plans.run(tryIt, {
       tries: 5,
       ok: function () {
-        is.tis(count, 3);
+        is(count, 3);
         done();
       },
       error: function (e) {
@@ -94,7 +94,7 @@ describe('plans.run', function () {
 
   it('supports errbacks as plans', function (done) {
     plans.run(returner, function (e, result) {
-      is.tis(result, 1);
+      is(result, 1);
       done();
     });
   });
@@ -130,7 +130,7 @@ describe('plans.run', function () {
   it('calls done when there is no ok method', function (done) {
     plans.run(returner, {
       done: function (data) {
-        is.tis(data, 1);
+        is(data, 1);
         done();
       }
     });
@@ -139,7 +139,7 @@ describe('plans.run', function () {
   it('supports errbacks', function (done) {
     plans.run(callbacker, {
       ok: function (data) {
-        is.tis(data, 2);
+        is(data, 2);
         done();
       }
     });
@@ -157,7 +157,7 @@ describe('plans.run', function () {
   it('supports errback lookalikes', function (done) {
     plans.run(errbackLookalike, {
       ok: function (data) {
-        is.tis(data, 3);
+        is(data, 3);
         done();
       }
     });

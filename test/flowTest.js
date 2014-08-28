@@ -39,7 +39,7 @@ describe('plans.flow', function () {
         done();
       },
       error: function (e) {
-        is.instance(e, SyntaxError);
+        is.instanceOf(e, SyntaxError);
         done();
       }
     });

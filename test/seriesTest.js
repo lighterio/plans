@@ -51,7 +51,7 @@ describe('plans.series', function () {
 
     plans.series([appender, appender, appender], {
       ok: function () {
-        is.tis(message, '123');
+        is(message, '123');
         done();
       },
       error: function (e) {

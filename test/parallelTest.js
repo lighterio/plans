@@ -72,7 +72,7 @@ describe('plans.parallel', function () {
 
     plans.parallel([one, two, three, four], {
       ok: function () {
-        is.tis(message, '4213');
+        is(message, '4213');
         done();
       },
       error: function (e) {
