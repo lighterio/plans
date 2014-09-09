@@ -185,7 +185,12 @@ plans.run = function(fn, plan) {
   try {
     if (argCount == 1) {
       result = fn(function (e, result) {
-        finish(plan, e ? [e] : null, result, args);
+        if (e instanceof Error) {
+          finish(plan, [e], result, args);
+        }
+        else {
+          finish(plan, null, e || result, args);
+        }
         finish = plans.ignore;
       });
       if (typeof result != 'undefined') {

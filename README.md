@@ -1,10 +1,10 @@
 # Plans
 
-[![NPM Version](https://badge.fury.io/js/plans.png)](http://badge.fury.io/js/plans)
-[![Build Status](https://travis-ci.org/lighterio/plans.png?branch=master)](https://travis-ci.org/lighterio/plans)
-[![Code Coverage](https://coveralls.io/repos/lighterio/plans/badge.png?branch=master)](https://coveralls.io/r/lighterio/plans)
-[![Dependencies](https://david-dm.org/lighterio/plans.png?theme=shields.io)](https://david-dm.org/lighterio/plans)
-[![Support](http://img.shields.io/gittip/zerious.png)](https://www.gittip.com/lighterio/)
+[![NPM Version](https://img.shields.io/npm/v/plans.svg) ![Downloads](https://img.shields.io/npm/dm/plans.svg)](https://npmjs.org/package/plans)
+[![Build Status](https://img.shields.io/travis/lighterio/plans.svg)](https://travis-ci.org/lighterio/plans)
+[![Code Coverage](https://img.shields.io/coveralls/lighterio/plans/master.svg)](https://coveralls.io/r/lighterio/plans)
+[![Dependencies](https://img.shields.io/david/lighterio/plans.svg)](https://david-dm.org/lighterio/plans)
+[![Support](https://img.shields.io/gratipay/Lighter.io.svg)](https://gratipay.com/Lighter.io/)
 
 Plans is a high-performance JavaScript library for async operations and error
 handling. It uses a promise-inspired structure called a "plan". A plan is a
@@ -150,7 +150,7 @@ global `basePlan` (see `plans.setBasePlan`).
 ### .response: httpResponse
 
 The `response` property is used to respond to an HTTP request with a 500 error.
-This is done using the `error500` property if present.
+This is done using the `error` property if present.
 
 # API Methods
 

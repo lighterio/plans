@@ -182,6 +182,23 @@ describe('plans.run', function () {
     });
   });
 
+  it('handles nameless and stackless errors', function (done) {
+    plans.run(
+      function (fn) {
+        var e = new Error();
+        e.name = null;
+        e.stack = null;
+        fn(e);
+      },
+      {
+        error: function (e) {
+          is.error(e);
+          done();
+        }
+      }
+    );
+  });
+
   it('supports errback lookalikes', function (done) {
     plans.run(errbackLookalike, {
       ok: function (data) {
@@ -257,9 +274,6 @@ describe('plans.run', function () {
       throw new Error('oops');
     };
     plans.run(die, {
-      ok: function () {
-        is.fail('Should have timed out!');
-      },
       error: response,
       done: function () {
         is(response.writeHead.value, '500');
@@ -281,17 +295,40 @@ describe('plans.run', function () {
     };
     plans.setLogger(mockLog);
     var die = function (errback) {
-      errback('uh oh');
+      errback(new Error('uh oh'));
     };
     plans.run(die, {
-      ok: function () {
-        is.fail('Should have timed out!');
-      },
       error: response,
       done: function () {
         is(response.writeHead.value, '500');
         is(response.end.value, '<h1>Internal Server Error</h1>');
         is.in(mockLog.error.value, 'uh oh');
+        done();
+      }
+    });
+  });
+
+  it('supports http responses with stackless error messages', function (done) {
+    var response = new http.ServerResponse('GET');
+    mock(response, {
+      writeHead: mock.concat(),
+      end: mock.concat()
+    });
+    var mockLog = {
+      error: mock.concat()
+    };
+    plans.setLogger(mockLog);
+    var die = function (errback) {
+      var e = new Error('stackless');
+      e.stack = null;
+      errback(e);
+    };
+    plans.run(die, {
+      error: response,
+      done: function () {
+        is(response.writeHead.value, '500');
+        is(response.end.value, '<h1>Internal Server Error</h1>');
+        is.in(mockLog.error.value, 'stackless');
         done();
       }
     });
