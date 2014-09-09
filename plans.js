@@ -1,10 +1,12 @@
 var fs = require('fs');
+var http = require('http');
 
 // The plans API is an object.
 var plans = module.exports = {};
 
 // Expose the version number, but only load package JSON if a get is performed.
 Object.defineProperty(plans, 'version', {
+  enumerable: false,
   get: function () {
     return require('./package.json').version;
   }
@@ -31,7 +33,22 @@ var basePlan = {
  * The base plan's methods get used if a plan doesn't implement some methods.
  */
 plans.setBasePlan = function (plan) {
-  basePlan = plan;
+  if (plan && (typeof plan === 'object')) {
+    basePlan = plan;
+  }
+  else {
+    throw new Error('The base plan must be an object.');
+  }
+};
+
+/**
+ * An HTTP response's error method can send a 500 and log the error.
+ */
+var res = http.ServerResponse.prototype;
+res.error = res.error || function (e) {
+  this.writeHead(500, {'content-type': 'text/html'});
+  this.end('<h1>Internal Server Error</h1>');
+  logger.error(e.stack || e);
 };
 
 /**
@@ -40,91 +57,119 @@ plans.setBasePlan = function (plan) {
 plans.ignore = function () {};
 
 /**
- * A Retry is a plan that is being tried again.
+ * A Retry is a plan clone, on which .tries can be decremented.
  */
-function Retry(plan) {
+function Retry(plan, tries) {
   for (var key in plan) {
     this[key] = plan[key];
   }
+  plan.tries = tries;
 }
+
+/**
+ * Start a plan by doing any necessary pre-work.
+ */
+function startPlan(plan, args) {
+  var base = plan ? plan.base || basePlan : basePlan;
+  plan = plan || base;
+  var timeout = plan.timeout || base.timeout;
+  if (timeout) {
+    delete args.timeoutError;
+    args.timeout = setTimeout(function () {
+      var error = new TimeoutError('Time exceeded ' + timeout + 'ms.');
+      finishPlan(plan, [error], null, args);
+      args.timeoutError = error;
+    }, timeout);
+  }
+}
+
+function TimeoutError(message) {
+  this.message = message;
+  this.stack = (new Error()).stack;
+}
+TimeoutError.prototype = new Error();
+TimeoutError.prototype.name = 'TimeoutError';
 
 /**
  * Execute a plan based on the error(s) and value.
  */
-function finishPlan(plan, errors, result, method, args) {
+function finishPlan(plan, errors, result, args) {
   var fn;
+  var base = plan ? plan.base || basePlan : basePlan;
+  plan = plan || base;
+
+  clearTimeout(args.timeout);
+  if (args.timeoutError) {
+    return;
+  }
+
+  args.finished = true;
   if (typeof plan == 'function') {
     var errback = plan;
     plan = {
       ok: function (data) {
         errback(null, data);
       },
-      error: function (e) {
-        errback(e);
-      }
+      error: errback
     };
   }
+
   if (errors) {
-    if (plan && plan.tries) {
+    var tries = plan.tries || base.tries;
+    var delay = plan.retryDelay || base.retryDelay;
+    if (tries) {
       if (!(plan instanceof Retry)) {
         for (var index = args.length - 1; index; index--) {
           if (args[index] == plan) {
-            plan = args[index] = new Retry(plan);
+            plan = args[index] = new Retry(plan, tries);
             break;
           }
         }
       }
       if (--plan.tries) {
-        method.apply(plans, args);
+        if (delay) {
+          setTimeout(function () {
+            args.callee.apply(plans, args);
+          }, delay);
+        }
+        else {
+          args.callee.apply(plans, args);
+        }
         return;
       }
     }
-    handleError(plan, errors[0]);
-    if (plan) {
-      fn = plan.errors;
+
+    // Handle a single error.
+    var error = errors[0];
+    var name = error.name;
+    var key = name ? name[0].toLowerCase() + name.substr(1) : 'error';
+    fn = plan[key] || plan.error || base[key] || base.error;
+    if (typeof fn == 'function') {
+      fn(error);
     }
-    if (!fn && basePlan) {
-      fn = basePlan.errors;
+    else if (fn instanceof http.ServerResponse) {
+      fn.error(error);
     }
-    if (fn) {
+    else if (fn) {
+      throw error;
+    }
+
+    // Handle multiple errors.
+    fn = plan.errors || base.errors;
+    if (typeof fn == 'function') {
       fn(errors);
     }
+
   }
   else {
-    if (plan) {
-      fn = plan.ok || plan.info;
-    }
-    if (!fn && basePlan) {
-      fn = basePlan.ok || basePlan.info;
-    }
-    if (fn) {
+    fn = plan.ok || plan.info || base.ok || base.info;
+    if (typeof fn == 'function') {
       fn(result || null);
     }
   }
-  if (plan && plan.done) {
-    plan.done(result || null);
-  }
-}
 
-/**
- * Handle an error according to the plan.
- */
-function handleError(plan, error) {
-  plan = plan || basePlan;
-  var name = error.name;
-  var key = name[0].toLowerCase() + name.substr(1);
-  var handler;
-  if (plan) {
-    handler = plan[key] || plan.error;
-  }
-  if (!handler && basePlan) {
-    handler = basePlan[key] || basePlan.error;
-  }
-  if (handler === true) {
-    throw error;
-  }
-  else if (handler) {
-    handler(error);
+  if (plan.done) {
+    plan.done(result || null);
   }
 }
 
@@ -132,6 +177,7 @@ function handleError(plan, error) {
  * Execute a function, then a plan.
  */
 plans.run = function(fn, plan) {
+  startPlan(plan, arguments);
   var args = arguments;
   var result;
   var argCount = getArgCount(fn);
@@ -139,21 +185,26 @@ plans.run = function(fn, plan) {
   try {
     if (argCount == 1) {
       result = fn(function (e, result) {
-        finish(plan, e ? [e] : null, result, plans.run, args);
+        if (e instanceof Error) {
+          finish(plan, [e], result, args);
+        }
+        else {
+          finish(plan, null, e || result, args);
+        }
         finish = plans.ignore;
       });
       if (typeof result != 'undefined') {
-        finish(plan, null, result);
+        finish(plan, null, result, args);
         finish = plans.ignore;
       }
     }
     else {
       result = fn();
-      finish(plan, null, result);
+      finish(plan, null, result, args);
     }
   }
   catch (e) {
-    finish(plan, [e], result, plans.run, args);
+    finish(plan, [e], result, args);
     finish = plans.ignore;
   }
 };
@@ -162,6 +213,7 @@ plans.run = function(fn, plan) {
  * Execute functions in series, then execute the plan.
  */
 plans.series = function(fns, plan) {
+  startPlan(plan, arguments);
   var args = arguments;
   var fnIndex = 0;
   var fnCount = fns.length;
@@ -203,7 +255,7 @@ plans.series = function(fns, plan) {
     }
   };
   var finish = function () {
-    finishPlan(plan, errs, null, plans.series, args);
+    finishPlan(plan, errs, null, args);
   };
   if (fnCount) {
     next();
@@ -217,6 +269,7 @@ plans.series = function(fns, plan) {
  * Execute functions in parallel, then execute the plan.
  */
 plans.parallel = function(fns, plan) {
+  startPlan(plan, arguments);
   var args = arguments;
   var waitCount = fns.length;
   var errs;
@@ -263,7 +316,7 @@ plans.parallel = function(fns, plan) {
     });
   }
   else {
-    finishPlan(plan);
+    finishPlan(plan, null, null, args);
   }
 };
 
@@ -271,6 +324,7 @@ plans.parallel = function(fns, plan) {
  * Flow data through an array of functions.
  */
 plans.flow = function (data, fns, plan) {
+  startPlan(plan, arguments);
   var args = arguments;
   var fnIndex = 0;
   var fnCount = fns.length;
@@ -312,7 +366,7 @@ plans.flow = function (data, fns, plan) {
     }
   };
   var finish = function () {
-    finishPlan(plan, errs, data, plans.flow, args);
+    finishPlan(plan, errs, data, args);
   };
   if (fnCount) {
     next();

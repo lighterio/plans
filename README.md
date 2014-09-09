@@ -1,10 +1,10 @@
 # Plans
 
-[![NPM Version](https://badge.fury.io/js/plans.png)](http://badge.fury.io/js/plans)
-[![Build Status](https://travis-ci.org/lighterio/plans.png?branch=master)](https://travis-ci.org/lighterio/plans)
-[![Code Coverage](https://coveralls.io/repos/lighterio/plans/badge.png?branch=master)](https://coveralls.io/r/lighterio/plans)
-[![Dependencies](https://david-dm.org/lighterio/plans.png?theme=shields.io)](https://david-dm.org/lighterio/plans)
-[![Support](http://img.shields.io/gittip/zerious.png)](https://www.gittip.com/lighterio/)
+[![NPM Version](https://img.shields.io/npm/v/plans.svg) ![Downloads](https://img.shields.io/npm/dm/plans.svg)](https://npmjs.org/package/plans)
+[![Build Status](https://img.shields.io/travis/lighterio/plans.svg)](https://travis-ci.org/lighterio/plans)
+[![Code Coverage](https://img.shields.io/coveralls/lighterio/plans/master.svg)](https://coveralls.io/r/lighterio/plans)
+[![Dependencies](https://img.shields.io/david/lighterio/plans.svg)](https://david-dm.org/lighterio/plans)
+[![Support](https://img.shields.io/gratipay/Lighter.io.svg)](https://gratipay.com/Lighter.io/)
 
 Plans is a high-performance JavaScript library for async operations and error
 handling. It uses a promise-inspired structure called a "plan". A plan is a
@@ -68,7 +68,9 @@ plans.parallel([fn1, fn2, fn3], {
     console.error('An error occurred. :(', e);
   }
 });
+```
 
+<!--
 // Get stats objects for an array of files (simultaneously).
 plans.map(['a.js', 'b.js', 'c.js'], fs.stat, {
   ok: function (resultArray) {
@@ -85,7 +87,7 @@ plans.filter(['a.js', 'b.js', 'c.js'], fs.exists, {
     console.log('These files exist:', arrayOfFiles);
   }
 });
-```
+-->
 
 # Plan Objects
 
@@ -106,6 +108,7 @@ var plan = {
   }
 };
 ```
+## Supported properties
 
 ### .ok: function (result) {...}
 
@@ -123,10 +126,31 @@ them will only be called once (per usage).
 
 ### .tries: integer
 
-Plans methods will attempt execution up to `tries` times. The default is one,
+Specifies the maximum number of times to attempt execution. The default is one,
 and any value greater than one allows for retries. If the method fails on each
-try, it will call the plan's `error` and/or `errors` methods with the error(s)
-from the final attempt.
+try, it will call the plan's `error` and/or `errors` methods with the
+error/errors from the final attempt.
+
+### .retryDelay: milliseconds
+
+Specifies the number of milliseconds to wait before retrying.
+
+### .timeout: milliseconds
+
+Specifies the maximum time in milliseconds that a method should wait before
+considering itself to have failed. When a timeout occurs, the plan can retry
+if it has not yet exhausted its `tries`. Otherwise, the plan's `error`
+and/or `errors` method will be called with a TimeoutError.
+
+### .base: plan
+
+The `base` property specifies a plan to fall back on, instead of using the
+global `basePlan` (see `plans.setBasePlan`).
+
+### .response: httpResponse
+
+The `response` property is used to respond to an HTTP request with a 500 error.
+This is done using the `error` property if present.
 
 # API Methods
 

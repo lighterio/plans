@@ -44,9 +44,28 @@ describe('plans.setBasePlan', function () {
     });
   });
 
-  it('can be null', function () {
-    plans.setBasePlan(null);
-    plans.flow(0, [throwError]);
+  it('must receive an object', function (done) {
+    try {
+      plans.setBasePlan();
+    }
+    catch (e1) {
+      try {
+        plans.setBasePlan(null);
+      }
+      catch (e2) {
+        try {
+          plans.setBasePlan('oops');
+        }
+        catch (e3) {
+          try {
+            plans.setBasePlan(plans.ignore);
+          }
+          catch (e4) {
+            done();
+          }
+        }
+      }
+    }
   });
 
   it('accepts a logger', function (done) {
@@ -63,13 +82,8 @@ describe('plans.setBasePlan', function () {
     });
   });
 
-  it('handles specific error classes', function (done) {
-    plans.setBasePlan({
-      syntaxError: function () {
-        done();
-      }
-    });
-    plans.flow('Not JSON', [JSON.parse]);
+  it('swallows errors when there is no error handler', function () {
+    plans.run(throwError, {base: {}});
   });
 
 });

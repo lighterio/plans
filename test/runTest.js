@@ -1,5 +1,7 @@
 var plans = require('../plans');
+var mock = require('exam/lib/mock');
 var fs = require('fs');
+var http = require('http');
 var assert = require('assert');
 var cwd = process.cwd();
 
@@ -83,6 +85,32 @@ describe('plans.run', function () {
     });
   });
 
+  it('supports tries with retryDelay', function (done) {
+    var count = 0;
+    var delayed = false;
+    function tryIt() {
+      if (++count < 2) {
+        throwError();
+      }
+    }
+    setTimeout(function () {
+      delayed = true;
+    }, 5);
+    plans.run(tryIt, {
+      tries: 2,
+      retryDelay: 10,
+      ok: function () {
+        is(count, 2);
+        is.true(delayed);
+        done();
+      },
+      error: function (e) {
+        is.fail();
+        done();
+      }
+    });
+  });
+
   it('ignores extra arguments when tries is set', function (done) {
     plans.run(throwError, {
       tries: 2,
@@ -154,6 +182,23 @@ describe('plans.run', function () {
     });
   });
 
+  it('handles nameless and stackless errors', function (done) {
+    plans.run(
+      function (fn) {
+        var e = new Error();
+        e.name = null;
+        e.stack = null;
+        fn(e);
+      },
+      {
+        error: function (e) {
+          is.error(e);
+          done();
+        }
+      }
+    );
+  });
+
   it('supports errback lookalikes', function (done) {
     plans.run(errbackLookalike, {
       ok: function (data) {
@@ -182,6 +227,111 @@ describe('plans.run', function () {
     catch (e) {
       done();
     }
+  });
+
+  it('supports timeouts with no side effects', function (done) {
+    var plan = {
+      timeout: 10,
+      ok: function (ok) {
+        is(ok, 'ok');
+        done();
+      }
+    };
+    plans.run(function () {
+      return 'ok';
+    }, plan);
+  });
+
+  it('fails if the timeout is exceeded', function (done) {
+    var plan = {
+      timeout: 10,
+      ok: function () {
+        is.fail('Should have timed out!');
+      },
+      error: function (e) {
+        is.error(e);
+        done();
+      }
+    };
+    plans.run(function (ok) {
+      setTimeout(function () {
+        ok('ok');
+      }, 20);
+    }, plan);
+  });
+
+  it('supports http responses', function (done) {
+    var response = new http.ServerResponse('GET');
+    mock(response, {
+      writeHead: mock.concat(),
+      end: mock.concat()
+    });
+    var mockLog = {
+      error: mock.concat()
+    };
+    plans.setLogger(mockLog);
+    var die = function () {
+      throw new Error('oops');
+    };
+    plans.run(die, {
+      error: response,
+      done: function () {
+        is(response.writeHead.value, '500');
+        is(response.end.value, '<h1>Internal Server Error</h1>');
+        is.in(mockLog.error.value, 'oops');
+        done();
+      }
+    });
+  });
+
+  it('supports http responses with error messages', function (done) {
+    var response = new http.ServerResponse('GET');
+    mock(response, {
+      writeHead: mock.concat(),
+      end: mock.concat()
+    });
+    var mockLog = {
+      error: mock.concat()
+    };
+    plans.setLogger(mockLog);
+    var die = function (errback) {
+      errback(new Error('uh oh'));
+    };
+    plans.run(die, {
+      error: response,
+      done: function () {
+        is(response.writeHead.value, '500');
+        is(response.end.value, '<h1>Internal Server Error</h1>');
+        is.in(mockLog.error.value, 'uh oh');
+        done();
+      }
+    });
+  });
+
+  it('supports http responses with stackless error messages', function (done) {
+    var response = new http.ServerResponse('GET');
+    mock(response, {
+      writeHead: mock.concat(),
+      end: mock.concat()
+    });
+    var mockLog = {
+      error: mock.concat()
+    };
+    plans.setLogger(mockLog);
+    var die = function (errback) {
+      var e = new Error('stackless');
+      e.stack = null;
+      errback(e);
+    };
+    plans.run(die, {
+      error: response,
+      done: function () {
+        is(response.writeHead.value, '500');
+        is(response.end.value, '<h1>Internal Server Error</h1>');
+        is.in(mockLog.error.value, 'stackless');
+        done();
+      }
+    });
   });
 
 });
