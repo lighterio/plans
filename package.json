@@ -4,7 +4,7 @@
   "keywords": [
     "plans"
   ],
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "plans.js",
   "homepage": "http://github.com/lighterio/plans",
   "repository": "http://github.com/lighterio/plans.git",
