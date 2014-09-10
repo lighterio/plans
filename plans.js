@@ -76,19 +76,13 @@ function startPlan(plan, args) {
   if (timeout) {
     delete args.timeoutError;
     args.timeout = setTimeout(function () {
-      var error = new TimeoutError('Time exceeded ' + timeout + 'ms.');
+      var error = new Error('Plans execution time exceeded ' + timeout + 'ms.');
+      error.name = 'TimeoutError';
       finishPlan(plan, [error], null, args);
       args.timeoutError = error;
     }, timeout);
   }
 }
-
-function TimeoutError(message) {
-  this.message = message;
-  this.stack = (new Error()).stack;
-}
-TimeoutError.prototype = new Error();
-TimeoutError.prototype.name = 'TimeoutError';
 
 /**
  * Execute a plan based on the error(s) and value.
@@ -276,7 +270,7 @@ plans.parallel = function(fns, plan) {
   if (waitCount) {
     var finish = function() {
       if (!--waitCount) {
-        finishPlan(plan, errs, null, plans.parallel, args);
+        finishPlan(plan, errs, null, args);
       }
     };
     fns.forEach(function (fn) {
