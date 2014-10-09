@@ -5,8 +5,7 @@ var finish;
 
 module.exports = function (finish) {
 
-
-  var runCount = 1e5;
+  var runCount = 1e6;
   console.log('\n' + 'plans.parallel vs async.parallel');
   console.log('* 100K runs...');
 
