@@ -29,7 +29,10 @@ describe('plans.setBasePlan', function () {
       throw e;
     }
     plans.run(throwStackless, {
-      done: done
+      done: function (e) {
+        is.error(e);
+        done();
+      }
     });
   });
 

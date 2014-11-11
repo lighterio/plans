@@ -47,7 +47,7 @@ describe('plans.run', function () {
         is.fail(e);
         done();
       },
-      done: function (data) {
+      done: function (e, data) {
         is(data, 1);
         done();
       }
@@ -147,6 +147,22 @@ describe('plans.run', function () {
     });
   });
 
+  it('catches specific errors by name', function (done) {
+    plans.run(throwError, {
+      ok: function (data) {
+        is.fail();
+        done();
+      },
+      error: function (e) {
+        done(e);
+      },
+      catchAssertionError: function (e) {
+        is.error(e);
+        done();
+      }
+    });
+  });
+
   it('calls done even when an error occurred', function (done) {
     plans.run(throwError, {
       done: function () {
@@ -157,7 +173,7 @@ describe('plans.run', function () {
 
   it('calls done when there is no ok method', function (done) {
     plans.run(returner, {
-      done: function (data) {
+      done: function (e, data) {
         is(data, 1);
         done();
       }

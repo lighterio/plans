@@ -23,7 +23,7 @@ module.exports = function (finish) {
         error: function (e) {
           console.error(e);
         },
-        syntaxError: function (e) {
+        catchSyntaxError: function (e) {
           console.error(e);
         }
       });

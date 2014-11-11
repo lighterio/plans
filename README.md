@@ -35,8 +35,8 @@ plans.run(fn, {
   error: function (e) {
     console.error('Failure. :(', e);
   },
-  done: function () {
-    console.log('Finished. (See result above).', e);
+  done: function (e, value) {
+    console.log('Finished.', e, value);
   }
 });
 
@@ -48,7 +48,7 @@ plans.flow('package.json', [fs.readFile, JSON.parse], {
   error: function (e, filename) {
     console.error('Failed to read "' + process.cwd() + '/' + filename + '".', e);
   },
-  syntaxError: function (e, json) {
+  catchSyntaxError: function (e, json) {
     console.error('Failed to parse "' + json + '" as JSON.', e);
   }
 });
@@ -128,6 +128,11 @@ Called when an error occurred. Its argument is the first error that occurred.
 Called when one or more errors occurred. If a plan has both ```.error```
 and ```.errors```, they will both be called when an error occurs, and each of
 them will only be called once (per usage).
+
+#### .done: function (error, result) {...}
+
+Called when execution has finished. If execution failed, the error is passed
+as the first argument, otherwise the result is passed as the second argument.
 
 #### .tries: integer
 

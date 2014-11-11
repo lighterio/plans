@@ -97,20 +97,15 @@ function finishPlan(plan, errors, result, args) {
     return;
   }
 
-  args.finished = true;
+  // If a function is passed in, use it as a `done` errback.
   if (typeof plan == 'function') {
-    var errback = plan;
-    plan = {
-      ok: function (data) {
-        errback(null, data);
-      },
-      error: errback
-    };
+    plan = {done: plan, base: 0};
   }
 
-  if (errors) {
+  // If there's an error, retry or handle it.
+  var error = errors ? errors[0] : undefined;
+  if (error) {
     var tries = plan.tries || base.tries;
-    var delay = plan.retryDelay || base.retryDelay;
     if (tries) {
       if (!(plan instanceof Retry)) {
         for (var index = args.length - 1; index; index--) {
@@ -121,25 +116,19 @@ function finishPlan(plan, errors, result, args) {
         }
       }
       if (--plan.tries) {
-        if (delay) {
-          setTimeout(function () {
-            args.callee.apply(plans, args);
-          }, delay);
-        }
-        else {
+        var delay = plan.retryDelay || base.retryDelay || 0;
+        setTimeout(function () {
           args.callee.apply(plans, args);
-        }
+        }, delay);
         return;
       }
     }
 
     // Handle a single error.
-    var error = errors[0];
-    var name = error.name;
-    var key = name ? name[0].toLowerCase() + name.substr(1) : 'error';
+    var key = 'catch' + error.name;
     fn = plan[key] || plan.error || base[key] || base.error;
     if (typeof fn == 'function') {
-      fn(error);
+      fn.call(plan, error, error.input);
     }
     else if (fn instanceof http.ServerResponse) {
       fn.error(error);
@@ -151,19 +140,22 @@ function finishPlan(plan, errors, result, args) {
     // Handle multiple errors.
     fn = plan.errors || base.errors;
     if (typeof fn == 'function') {
-      fn(errors);
+      fn.call(plan, errors);
     }
 
   }
   else {
+    // Handle success.
     fn = plan.ok || plan.info || base.ok || base.info;
     if (typeof fn == 'function') {
-      fn(result || null);
+      fn.call(plan, result);
     }
   }
 
-  if (plan.done) {
-    plan.done(result || null);
+  // Handle completion with an errback.
+  fn = plan.done || base.done;
+  if (typeof fn == 'function') {
+    fn.call(plan, error, result);
   }
 }
 
@@ -332,6 +324,7 @@ plans.flow = function (data, fns, plan) {
       if (argCount > 1) {
         data = fn(data, function (e, result) {
           if (e) {
+            e.input = data;
             (errs = errs || []).push(e);
             onData();
             onDone = ignore;
@@ -354,6 +347,7 @@ plans.flow = function (data, fns, plan) {
       }
     }
     catch (e) {
+      e.input = data;
       (errs = errs || []).push(e);
       onData();
       onDone = ignore;
