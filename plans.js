@@ -97,9 +97,9 @@ function finishPlan(plan, errors, result, args) {
     return;
   }
 
-  // If a function is passed in, use it as a `done` errback.
-  if (typeof plan == 'function') {
-    plan = {done: plan, base: 0};
+  // If a function is passed in, make a plan with itself as the `done` errback.
+  if (typeof plan == 'function' && !plan.done) {
+    plan.done = plan;
   }
 
   // If there's an error, retry or handle it.
