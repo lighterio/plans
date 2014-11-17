@@ -162,6 +162,11 @@ global `basePlan` (see `plans.setBasePlan`).
 The `response` property is used to respond to an HTTP request with a 500 error.
 This is done using the `error` property if present.
 
+## Thenable Objects
+
+A Thenable has methods that can be used to start new runs after the parent
+run has ended.
+
 ## API Methods
 
 The plans module returns an object with several methods for setting defaults
@@ -182,6 +187,11 @@ logger from `plans.setLogger`:
     logger.error(e);
   }
 }
+```
+
+To revert changes, you can restore `plans.defaultBasePlan`:
+```js
+plans.setBasePlan(plans.defaultBasePlan);
 ```
 
 ### .run(fn, plan)

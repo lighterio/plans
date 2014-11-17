@@ -5,7 +5,7 @@ var finish;
 
 module.exports = function (finish) {
 
-  var runCount = 1e6;
+  var runCount = 1e5;
   console.log('\n' + 'plans.parallel vs async.parallel');
   console.log('* 100K runs...');
 
@@ -15,8 +15,8 @@ module.exports = function (finish) {
   var set = [f, f, f];
 
   var tests = {
-    plans: function (done) {
-      plans.parallel(set, {
+    'plans.all': function (done) {
+      plans.all(set, {
         ok: function () {
           setImmediate(done);
         }
