@@ -30,8 +30,8 @@ var finish = function () {
   console.log('');
 };
 
-plans.series([flow, parallel, finish], {
-  error: function (e) {
+plans.each([flow, parallel, finish], {
+  fail: function (e) {
     console.error(e);
   }
 });

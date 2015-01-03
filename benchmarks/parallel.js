@@ -10,20 +10,21 @@ module.exports = function (finish) {
   console.log('* 100K runs...');
 
   function f(done) {
-    done();
+    done(1);
   }
-  var set = [f, f, f];
+
+  var fns = [f, f, f];
 
   var tests = {
-    'plans.all': function (done) {
-      plans.all(set, {
+    plans: function (done) {
+      plans.all(fns, {
         ok: function () {
           setImmediate(done);
         }
       });
     },
     async: function (done) {
-      async.parallel(set, function () {
+      async.parallel(fns, function () {
         setImmediate(done);
       });
     },

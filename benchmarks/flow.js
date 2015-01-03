@@ -14,16 +14,16 @@ module.exports = function (finish) {
   console.log('* 50K runs...');
 
   var tests = {
-    'plans.flow': function (done) {
-      plans.flow(path, [fs.readFile, JSON.parse], {
+    plans: function (done) {
+      plans(path).flow([fs.readFile, JSON.parse], {
         ok: function (data) {
           is.true(data.success);
           setImmediate(done);
         },
-        error: function (e) {
+        fail: function (e) {
           console.error(e);
         },
-        catchSyntaxError: function (e) {
+        SyntaxError: function (e) {
           console.error(e);
         }
       });

@@ -33,62 +33,45 @@ function errbacker(errback) {
   errback(newError(), null);
 }
 
-describe('plans.parallel', function () {
+describe('plans.each', function () {
 
-  it('defaults to the base plan', function (done) {
-    plans.setLogger({error: plans.ignore});
-    plans.parallel([throwError]);
-    setImmediate(done);
+  before(function () {
+    mock(plans.base, {
+      fail: mock.concat()
+    });
   });
 
-  it('runs functions in parallel', function (done) {
+  after(function () {
+    unmock();
+  });
+
+  it('runs functions in series', function (done) {
+    var n = 0;
     var message = '';
 
-    var one = function (done) {
-      setTimeout(function () {
-        message += 1;
-        done();
-      }, 5);
-    };
+    function appender(done) {
+      return message += ++n;
+    }
 
-    var two = function (done) {
-      setImmediate(function () {
-        message += 2;
-        done();
-      });
-    };
-
-    var three = function (done) {
-      setTimeout(function () {
-        message += 3;
-        done();
-      }, 10);
-    };
-
-    var four = function (done) {
-      message += 4;
-      done();
-    };
-
-    plans.parallel([one, two, three, four], {
+    plans.each([appender, appender, appender], {
       ok: function () {
-        is(message, '4213');
+        is(message, '123');
         done();
       },
-      error: function (e) {
+      fail: function (e) {
         is.fail(e);
         done();
       }
     });
   });
 
-  it('calls ok and done even if the array is empty', function (done) {
+  it('calls ok and done even if the each is empty', function (done) {
     var isOk = false;
-    plans.parallel([], {
+    plans.each([], {
       ok: function () {
         isOk = true;
       },
-      error: function (e) {
+      fail: function (e) {
         is.fail(e);
         done();
       },
@@ -100,12 +83,12 @@ describe('plans.parallel', function () {
   });
 
   it('handles errors', function (done) {
-    plans.parallel([throwError], {
+    plans.each([throwError], {
       ok: function () {
         is.fail();
         done();
       },
-      error: function (e) {
+      fail: function (e) {
         is.error(e);
         done();
       }
@@ -113,7 +96,7 @@ describe('plans.parallel', function () {
   });
 
   it('calls done even when an error occurred', function (done) {
-    plans.parallel([throwError], {
+    plans.each([throwError], {
       done: function () {
         done();
       }
@@ -121,7 +104,7 @@ describe('plans.parallel', function () {
   });
 
   it('calls done when there is no ok method', function (done) {
-    plans.parallel([returner], {
+    plans.each([returner], {
       done: function () {
         done();
       }
@@ -129,15 +112,15 @@ describe('plans.parallel', function () {
   });
 
   it('supports errbacks', function (done) {
-    plans.parallel([callbacker], {
-      ok: function (data) {
+    plans.each([callbacker], {
+      ok: function () {
         done();
       }
     });
   });
 
   it('supports async errbacks', function (done) {
-    plans.parallel([asyncCallbacker], {
+    plans.each([asyncCallbacker], {
       ok: function () {
         done();
       }
@@ -145,8 +128,8 @@ describe('plans.parallel', function () {
   });
 
   it('handles errback errors', function (done) {
-    plans.parallel([errbacker], {
-      error: function (e) {
+    plans.each([errbacker], {
+      fail: function (e) {
         is.error(e);
         done();
       }
@@ -154,7 +137,7 @@ describe('plans.parallel', function () {
   });
 
   it('supports errback lookalikes', function (done) {
-    plans.parallel([errbackLookalike], {
+    plans.each([errbackLookalike], {
       ok: function (data) {
         done();
       }
@@ -162,8 +145,8 @@ describe('plans.parallel', function () {
   });
 
   it('pushes an error', function (done) {
-    plans.parallel([throwError], {
-      errors: function (errors) {
+    plans.each([throwError], {
+      fails: function (errors) {
         is.lengthOf(errors, 1);
         is.error(errors[0]);
         done();
@@ -173,8 +156,8 @@ describe('plans.parallel', function () {
 
   it('throws an error if .error === true', function (done) {
     try {
-      plans.parallel([throwError], {
-        error: true
+      plans.each([throwError], {
+        fail: true
       });
     }
     catch (e) {
