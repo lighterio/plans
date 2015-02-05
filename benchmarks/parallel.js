@@ -5,26 +5,26 @@ var finish;
 
 module.exports = function (finish) {
 
-
   var runCount = 1e5;
   console.log('\n' + 'plans.parallel vs async.parallel');
   console.log('* 100K runs...');
 
   function f(done) {
-    done();
+    done(1);
   }
-  var set = [f, f, f];
+
+  var fns = [f, f, f];
 
   var tests = {
     plans: function (done) {
-      plans.parallel(set, {
+      plans.all(fns, {
         ok: function () {
           setImmediate(done);
         }
       });
     },
     async: function (done) {
-      async.parallel(set, function () {
+      async.parallel(fns, function () {
         setImmediate(done);
       });
     },

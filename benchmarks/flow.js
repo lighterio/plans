@@ -9,21 +9,21 @@ var finish;
 
 module.exports = function (finish) {
 
-  var runCount = 1e5;
-  console.log('\n' + 'plans.flow vs bluebird fs.readFileSync().then(JSON.parse)');
-  console.log('* 100K runs...');
+  var runCount = 5e4;
+  console.log('\n' + 'plans.flow vs bluebird fs.readFileAsync().then(JSON.parse)');
+  console.log('* 50K runs...');
 
   var tests = {
     plans: function (done) {
-      plans.flow(path, [fs.readFile, JSON.parse], {
+      plans(path).flow([fs.readFile, JSON.parse], {
         ok: function (data) {
           is.true(data.success);
           setImmediate(done);
         },
-        error: function (e) {
+        fail: function (e) {
           console.error(e);
         },
-        syntaxError: function (e) {
+        SyntaxError: function (e) {
           console.error(e);
         }
       });

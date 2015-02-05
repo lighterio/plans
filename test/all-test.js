@@ -33,25 +33,50 @@ function errbacker(errback) {
   errback(newError(), null);
 }
 
-describe('plans.series', function () {
+describe('plans.all', function () {
 
-  it('defaults to the base plan', function (done) {
-    plans.setLogger({error: plans.ignore});
-    plans.series([throwError]);
-    setImmediate(done);
+  before(function () {
+    mock(plans.base, {
+      fail: mock.concat()
+    });
   });
 
-  it('runs functions in a series', function (done) {
-    var n = 0;
+  after(function () {
+    unmock();
+  });
+
+  it('runs functions in parallel', function (done) {
     var message = '';
 
-    function appender(done) {
-      return message += ++n;
-    }
+    var one = function (done) {
+      setTimeout(function () {
+        message += 1;
+        done();
+      }, 5);
+    };
 
-    plans.series([appender, appender, appender], {
+    var two = function (done) {
+      setImmediate(function () {
+        message += 2;
+        done();
+      });
+    };
+
+    var three = function (done) {
+      setTimeout(function () {
+        message += 3;
+        done();
+      }, 10);
+    };
+
+    var four = function (done) {
+      message += 4;
+      done();
+    };
+
+    plans.all([one, two, three, four], {
       ok: function () {
-        is(message, '123');
+        is(message, '4213');
         done();
       },
       error: function (e) {
@@ -61,9 +86,9 @@ describe('plans.series', function () {
     });
   });
 
-  it('calls ok and done even if the series is empty', function (done) {
+  it('calls ok and done even if the array is empty', function (done) {
     var isOk = false;
-    plans.series([], {
+    plans.all([], {
       ok: function () {
         isOk = true;
       },
@@ -79,7 +104,7 @@ describe('plans.series', function () {
   });
 
   it('handles errors', function (done) {
-    plans.series([throwError], {
+    plans.all([throwError], {
       ok: function () {
         is.fail();
         done();
@@ -92,7 +117,7 @@ describe('plans.series', function () {
   });
 
   it('calls done even when an error occurred', function (done) {
-    plans.series([throwError], {
+    plans.all([throwError], {
       done: function () {
         done();
       }
@@ -100,7 +125,7 @@ describe('plans.series', function () {
   });
 
   it('calls done when there is no ok method', function (done) {
-    plans.series([returner], {
+    plans.all([returner], {
       done: function () {
         done();
       }
@@ -108,15 +133,15 @@ describe('plans.series', function () {
   });
 
   it('supports errbacks', function (done) {
-    plans.series([callbacker], {
-      ok: function () {
+    plans.all([callbacker], {
+      ok: function (data) {
         done();
       }
     });
   });
 
   it('supports async errbacks', function (done) {
-    plans.series([asyncCallbacker], {
+    plans.all([asyncCallbacker], {
       ok: function () {
         done();
       }
@@ -124,7 +149,7 @@ describe('plans.series', function () {
   });
 
   it('handles errback errors', function (done) {
-    plans.series([errbacker], {
+    plans.all([errbacker], {
       error: function (e) {
         is.error(e);
         done();
@@ -133,7 +158,7 @@ describe('plans.series', function () {
   });
 
   it('supports errback lookalikes', function (done) {
-    plans.series([errbackLookalike], {
+    plans.all([errbackLookalike], {
       ok: function (data) {
         done();
       }
@@ -141,7 +166,7 @@ describe('plans.series', function () {
   });
 
   it('pushes an error', function (done) {
-    plans.series([throwError], {
+    plans.all([throwError], {
       errors: function (errors) {
         is.lengthOf(errors, 1);
         is.error(errors[0]);
@@ -152,7 +177,7 @@ describe('plans.series', function () {
 
   it('throws an error if .error === true', function (done) {
     try {
-      plans.series([throwError], {
+      plans.all([throwError], {
         error: true
       });
     }

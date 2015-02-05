@@ -1,207 +1,430 @@
-# Plans
-
-[![NPM Version](https://img.shields.io/npm/v/plans.svg) ![Downloads](https://img.shields.io/npm/dm/plans.svg)](https://npmjs.org/package/plans)
+# <a href="http://lighter.io/plans" style="font-size:40px;text-decoration:none;color:#000"><img src="https://cdn.rawgit.com/lighterio/lighter.io/master/public/plans.svg" style="width:90px;height:90px"> Plans</a>
+[![NPM Version](https://img.shields.io/npm/v/plans.svg)](https://npmjs.org/package/plans)
+[![Downloads](https://img.shields.io/npm/dm/plans.svg)](https://npmjs.org/package/plans)
 [![Build Status](https://img.shields.io/travis/lighterio/plans.svg)](https://travis-ci.org/lighterio/plans)
 [![Code Coverage](https://img.shields.io/coveralls/lighterio/plans/master.svg)](https://coveralls.io/r/lighterio/plans)
 [![Dependencies](https://img.shields.io/david/lighterio/plans.svg)](https://david-dm.org/lighterio/plans)
 [![Support](https://img.shields.io/gratipay/Lighter.io.svg)](https://gratipay.com/Lighter.io/)
 
-Plans is a high-performance JavaScript library for async operations and error
-handling. It uses a promise-inspired structure called a "plan". A plan is a
-plain object with optional methods including `ok`, `error` and `done` (think
-  `try`, `catch` and `finally`).
 
-# Quick Start
+**Plans** is a fast, powerful flow control library which combines the
+syntactic sugar and chaining of promises with the speed of simple callbacks.
+It accepts synchronous and asynchronous functions, and runs them in series
+or parallel in limitless combinations. **Plans** handles errors and accepts
+reusable plan objects that can specify things like:
+* Success, failure and completion functions
+* Timeouts
+* Retries with delays and backoffs
+* HTTP responses
+* Reusable base plans for fallback
 
-Install plans as a dependency of your package.
+**Plans** helps you do more, faster, with less code and greater reliability.
+
+
+### Quick Start
+
+Install `plans` in your project:
 ```bash
-npm i --save plans
+npm install --save plans
 ```
 
-Require "plans" and use its methods.
-
+Require `plans` in a script:
 ```js
 var plans = require('plans');
+```
 
-// Execute a function that returns a value or calls an errback.
-plans.run(fn, {
-  ok: function (value) {
-    console.info('Success! :)', value);
-  },
-  error: function (e) {
-    console.error('Failure. :(', e);
-  },
-  done: function () {
-    console.log('Finished. (See result above).', e);
-  }
-});
-
-// Flow data through an array of functions.
-plans.flow('package.json', [fs.readFile, JSON.parse], {
-  ok: function (data) {
+Use plans:
+```js
+// Flow values through an array of functions.
+var file = 'package.json';
+plans.flow(file, [fs.readFile, JSON.parse])
+  .then(function (data) {
     console.info('This package is called "' + data.name + '".');
   },
-  error: function (e, filename) {
-    console.error('Failed to read "' + process.cwd() + '/' + filename + '".', e);
-  },
-  syntaxError: function (e, json) {
-    console.error('Failed to parse "' + json + '" as JSON.', e);
-  }
-});
+  function (e, filename) {
+    console.error('Failed to read "' + file + '".', e);
+  });
+```
 
-// Execute 3 functions sequentially.
-plans.series([fn1, fn2, fn3], {
-  ok: function () {
-    console.info('All three functions succeeded! :)');
+A plan can have a success or failure function:
+```js
+plans.run(fn, {
+  ok: function (value) {
+    console.info("Success!", value);
   },
-  error: function (e) {
-    console.error('An error occurred. :(', e);
-  }
-});
-
-// Execute 3 functions simultaneously.
-plans.parallel([fn1, fn2, fn3], {
-  ok: function () {
-    console.info('All three functions succeeded! :)');
-  },
-  error: function (e) {
-    console.error('An error occurred. :(', e);
+  fail: function (error) {
+    console.error("Failure.", error);
   }
 });
 ```
 
-<!--
-// Get stats objects for an array of files (simultaneously).
-plans.map(['a.js', 'b.js', 'c.js'], fs.stat, {
-  ok: function (resultArray) {
-    console.info('File stats:', successMap);
+Or an "errback", if that's your thing:
+```js
+plans.run(fn, {
+  done: function (error, value) {
+    if (error) {
+      console.info("Success!", value);
+    } else {
+      console.error("Failure.", error);
+    }
+  }
+});
+```
+
+Anything can be a plan, assuming it exposes methods like `ok`, `info`,
+`fail`, `error` or `done`. Since the console object has `info` and `error` methods, it can be used to show the value or the error that a function generates:
+```js
+plans.run(fn, console);
+```
+
+Plans can chain:
+```js
+plans("package.json").run(fs.readFile)
+  .then(function (json) {
+    console.info("Package JSON:\n" + json);
   },
-  error: function (e) {
-    console.error('Failed to stat some files:', e);
+  function (error) {
+    console.error("These aren't the droids you're looking for...", error);
+  });
+```
+
+Or run all functions in parallel:
+```js
+plans.all([fn1, fn2, fn3], console);
+```
+
+Or run each function in series:
+```js
+plans.each([fn1, fn2, fn3], console);
+```
+
+And much more:
+```js
+var path = "package.json";
+var version = "1.0.0";
+plans(path).flow([fs.readFile, JSON.parse], {
+  ok: function (pkg) {
+    console.info("Package name: " + pkg.name + ".");
+  },
+  fail: function (e) {
+    console.error("Failed to read " + process.cwd() + "/" + e.input + ".", e);
+  },
+  SyntaxError: function (e) {
+    console.error("Failed to parse JSON:", e.input, e);
   }
-});
-
-// Get an array of files which exist.
-plans.filter(['a.js', 'b.js', 'c.js'], fs.exists, {
-  done: function (arrayOfFiles) {
-    console.log('These files exist:', arrayOfFiles);
-  }
-});
--->
-
-# Plan Objects
-
-A plan is a simple object which specifies how you would like to handle a result,
-whether it is success or error. A plan object can be saved and reused for
-multiple ```plans``` method calls.
-
-Plan objects specify their behavior by having methods such as ```ok``` and
-```error``` in the following example:
-
-```javascript
-var plan = {
+})
+.andRun(function (pkg) {
+  pkg.version = version; // U-P-G-R-A-Y-E-D-D?
+  return pkg;
+})
+.run(JSON.stringify)
+.args(function (json) {
+  return [path, json];
+})
+.run(fs.writeFile, {
   ok: function () {
-    console.info('All three functions succeeded! :)');
+    console.info("We're at v" + version + "!");
+  }
+});
+
+```
+
+## Glossary
+
+This documentation uses internally-standardized terms to describe abstract
+concepts. Hopefully, this mapping will help.
+
+* **args** - an array or an arguments object (i.e. anything with a zero-indexed
+    set of properties an integer property called `length`).
+* **base** - a plan whose properties are used in place of any properties that
+    do not exist on a run's plan.
+* **chain** - an instance of `Plans.chain`, which links a run to its
+    children and exposes chaining methods like `then`.
+* **collection** - an input which is either array-flavored or object-flavored.
+    The former uses indexes as keys, and the latter uses properties as keys.
+* **fns** - a function or array of functions, which can operate synchronously
+    by returning a value other than `undefined`, or asynchronously by passing
+    a value to a callback.
+* **input** - a value that belongs to a chain and comes in one of 3 flavors:
+    ***data***, ***map*** or ***list***. The latter 2 flavors can send output
+    through multiple chains.
+* **keys** - numbers or strings used to map inputs to outputs.
+* **run** - an object created from arguments to a `plans` method, used to store
+    the input, state and value.
+* **state** - a phase of chain processing. `0` means waiting. `1` means
+    succeeded. `2` means failed. `3` means the chain was created just to
+    provide input to child runs.
+* **value** - an instance of `Error` if a run failed, or a non-error value if a
+    run succeeded.
+
+
+## API
+
+The `plans` API consists of methods for running and chaining functions, and
+`plans` itself is a function that returns new chains.
+
+So you can create a chain with "Hi!" as input, and log it:
+```js
+plans('Hi!').then(console.log);
+```
+
+### use(data)
+
+Creates a chain with data-flavored input to use in one call.
+
+### map(collection)
+
+Creates a chain with map-flavored input to use in parallel.
+
+### list(collection)
+
+Creates a chain with list-flavored input to use in series.
+
+### args([object], array)
+
+Creates a chain with args-flavored input to be applied to functions,
+optionally using `object` as the `this` context when arguments are applied.
+
+### run(fn, [plan])
+
+Run a single function, according to a plan.
+
+### all(fns, [plan])
+
+Run all functions in parallel, according to a plan.
+
+### each(fns, [plan])
+
+Run each function in series, according to a plan.
+
+### flow(fns, [plan])
+
+Run functions in serial, passing each value as input to the next function.
+
+### filter(fns, [plan])
+
+Run all functions on the input, generating a value composed of input items
+which resulted in truthy, non-error results from every function.
+
+### ignore()
+
+No-op function, used to replace callbacks where necessary.
+
+
+## Plan Objects
+
+A plan is an object or function which specifies how you would like to handle a
+result or an error, and all `plans` methods accept a `plan` argument. A plan
+can be saved and reused for multiple `plans` method calls, making it easy to
+do things like building retry/backoff/timeout/failure handling into all of your
+application's external service calls, while conserving resources and code.
+
+Plan objects specify their behavior by having methods such as `ok` and `error`:
+
+```js
+var plan = {
+  ok: function (result) {
+    console.info('Success! :)', result);
   },
-  error: function (e) {
-    console.error('An error occurred. :(', e);
+  error: function (error) {
+    console.error('An error occurred. :(', error);
+  },
+  done: function (error, result) {
+    console.error('Finished.');
   }
 };
 ```
-## Supported properties
 
-### .ok: function (result) {...}
+If a function is used as a plan, it gets called with the arguments that an
+"errback" expects.
 
-Called when there is a result and no error.
+### Base Plans
 
-### .error: function (error) {...}
+The `plans.base` object is used as a plan whenever an optional `plan` argument
+is omitted from a run. In addition, `plans.base` is used as the base for any
+plan that does not have its own `base` property.
+
+By default, `plans.base` just handles failures by logging errors to the
+console. But if you'd rather fail silently, you can:
+```js
+plans.base = null;
+```
+
+Or you can make your own base plan do whatever you need it to do:
+```js
+plans.base = {
+
+  retries: 2, // 3rd time's the charm.
+
+  delay: 1e3, // Wait a sec.
+
+  backoff: 2, // Then wait 2 secs.
+
+  timeout: 1e4, // 10 seconds without a result is no good.
+
+  // Handle success.
+  ok: function (value) {
+    console.log('OK: ', value);
+  },
+
+  // Handle failure.
+  error: function (error) {
+    console.log('Uh-ok: ', error);
+  }
+};
+```
+
+### Plan Properties
+
+A plan can have many properties to control its behavior and handle results.
+Every property is optional, and the base is used for any property whose value
+is undefined.
+
+#### ok: function (value) {...}
+
+Called when there is no error. Its argument is the return value of the run.
+
+Note: For `console` support, `info` works in place of `ok`.
+
+#### fail: function (error) {...}
 
 Called when an error occurred. Its argument is the first error that occurred.
 
-### .errors: function (arrayOfErrors) {...}
+Note: For `console` support, `error` works in place of `fail`.
 
-Called when one or more errors occurred. If a plan has both ```.error```
-and ```.errors```, they will both be called when an error occurs, and each of
+#### fails: function (array) {...}
+
+Called when one or more errors occurred. If a plan has both `.error`
+and `.errors`, they will both be called when an error occurs, and each of
 them will only be called once (per usage).
 
-### .tries: integer
+#### done: function (error, result) {...}
 
-Specifies the maximum number of times to attempt execution. The default is one,
-and any value greater than one allows for retries. If the method fails on each
-try, it will call the plan's `error` and/or `errors` methods with the
-error/errors from the final attempt.
+Called when execution has finished. If execution failed, the error is passed
+as the first argument, otherwise the result is passed as the second argument.
 
-### .retryDelay: milliseconds
+#### retries: integer
 
-Specifies the number of milliseconds to wait before retrying.
+The number of times to re-run before failing. If all retries fail, the plan's
+failure methods will be called. Note: The initial run is not counted in this
+number, so for example, setting retries to 2 would result in 3 tries total
+before failing.
 
-### .timeout: milliseconds
+#### delay: milliseconds
 
-Specifies the maximum time in milliseconds that a method should wait before
-considering itself to have failed. When a timeout occurs, the plan can retry
-if it has not yet exhausted its `tries`. Otherwise, the plan's `error`
-and/or `errors` method will be called with a TimeoutError.
+The number of milliseconds to wait before retrying (default: 0). If `backoff`
+is set to a number other than 1, then delay will be modified after the first
+retry.
 
-### .base: plan
+#### backoff: number
 
-The `base` property specifies a plan to fall back on, instead of using the
-global `basePlan` (see `plans.setBasePlan`).
+A multiplier to be applied to `delay` after each retry, enabling exponential
+backoff.
 
-### .response: httpResponse
+#### timeout: milliseconds
+
+The maximum time in milliseconds that to wait before retrying or failing.
+When a run times out with no retries remaining, the plan fails with a
+TimeoutError.
+
+#### base: plan
+
+A plan to fall back on, instead of using `plans.base`.
+
+#### response: http.ServerResponse
 
 The `response` property is used to respond to an HTTP request with a 500 error.
 This is done using the `error` property if present.
 
-# API Methods
+## Chain Objects
 
-The plans module returns an object with several methods for setting defaults
-and executing plans.
+Instances of `plans.Chain` can be used to start child runs after the parent run
+has ended, or to preload a run with an input.
 
-### .setLogger(object)
 
-Sets the logger that plans can use to log errors. The default is `console`.
+## Acknowledgements
 
-### .setBasePlan(object)
+We would like to thank all of the amazing people who use, support,
+promote, enhance, document, patch, and submit comments & issues.
+Plans couldn't exist without you.
 
-Sets the base plan whose methods will be used if the current plan has no
-implementation for those methods. The default is to just log errors using the
-logger from `plans.setLogger`:
-```js
-{
-  error: function (e) {
-    logger.error(e);
-  }
-}
-```
+Additionally, huge thanks go to [TUNE](http://www.tune.com) for employing
+and supporting [Plans](http://lighter.io/plans) project maintainers,
+and for being an epically awesome place to work (and play).
 
-### .run(fn, plan)
 
-Runs the function, then executes the plan.
+## MIT License
 
-### .flow(data, fnArray, plan)
+Copyright (c) 2014 Sam Eubank
 
-Runs an array of functions on data in serial by returning the result of the
-previous function to the next function.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-### .parallel(fnArray, plan)
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-Executes an array of functions in parallel, then executes the plan.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-### .series(fnArray, plan)
 
-Executes an array of functions in series, then executes the plan.
+## How to Contribute
 
-<!--
-### .map(array, fn, plan)
+We welcome contributions from the community and are happy to have them.
+Please follow this guide when logging issues or making code changes.
 
-Runs each item in the array through a function and returns an array containing
-the results of each of those functions.
+### Logging Issues
 
-### .filter(array, fn, plan)
+All issues should be created using the
+[new issue form](https://github.com/lighterio/plans/issues/new).
+Please describe the issue including steps to reproduce. Also, make sure
+to indicate the version that has the issue.
 
-Returns the items from the array for which the function returned a truey value.
--->
+### Changing Code
 
-### .ignore()
+Code changes are welcome and encouraged! Please follow our process:
 
-Empty callback, used for overriding default error logging.
+1. Fork the repository on GitHub.
+2. Fix the issue ensuring that your code follows the
+   [style guide](http://lighter.io/style-guide).
+3. Add tests for your new code, ensuring that you have 100% code coverage.
+   (If necessary, we can help you reach 100% prior to merging.)
+   * Run `npm test` to run tests quickly, without testing coverage.
+   * Run `npm run cover` to test coverage and generate a report.
+   * Run `npm run report` to open the coverage report you generated.
+4. [Pull requests](http://help.github.com/send-pull-requests/) should be made
+   to the [master branch](https://github.com/lighterio/plans/tree/master).
+
+### Contributor Code of Conduct
+
+As contributors and maintainers of Plans, we pledge to respect all
+people who contribute through reporting issues, posting feature requests,
+updating documentation, submitting pull requests or patches, and other
+activities.
+
+If any participant in this project has issues or takes exception with a
+contribution, they are obligated to provide constructive feedback and never
+resort to personal attacks, trolling, public or private harassment, insults, or
+other unprofessional conduct.
+
+Project maintainers have the right and responsibility to remove, edit, or
+reject comments, commits, code, edits, issues, and other contributions
+that are not aligned with this Code of Conduct. Project maintainers who do
+not follow the Code of Conduct may be removed from the project team.
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be
+reported by opening an issue or contacting one or more of the project
+maintainers.
+
+We promise to extend courtesy and respect to everyone involved in this project
+regardless of gender, gender identity, sexual orientation, ability or
+disability, ethnicity, religion, age, location, native language, or level of
+experience.
